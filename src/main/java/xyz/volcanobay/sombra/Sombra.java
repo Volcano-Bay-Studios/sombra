@@ -44,6 +44,15 @@ public class Somber {
         NeoForge.EVENT_BUS.register(this);
 
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+
+        VeilEventPlatform.INSTANCE.preVeilPostProcessing((pipelineName, pipeline, context) -> {
+            if (CUSTOM_POST_PIPELINE.equals(pipelineName)) {
+                ShaderProgram shader = context.getShader(CUSTOM_POST_SHADER);
+                if (shader != null) {
+                    shader.setInt("Secret", 42);
+                }
+            }
+        });
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
