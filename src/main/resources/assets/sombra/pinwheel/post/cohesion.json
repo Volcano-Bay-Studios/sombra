@@ -1,0 +1,9 @@
+{
+  "stages": [
+    {
+      "type": "veil:blit",
+      "shader": "sombra:cohesion",
+      "in": "minecraft:main"
+    }
+  ]
+}

@@ -1,3 +1,4 @@
 {
+  "vertex": "veil:blit_screen",
   "fragment": "sombra:cohesion"
 }
