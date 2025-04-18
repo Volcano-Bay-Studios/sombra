@@ -1,14 +1,23 @@
 package xyz.volcanobay.sombra;
 
 import com.mojang.logging.LogUtils;
-import foundry.veil.Veil;
 import foundry.veil.api.client.render.VeilRenderSystem;
 import foundry.veil.api.client.render.shader.program.ShaderProgram;
 import foundry.veil.api.client.render.shader.uniform.ShaderUniform;
-import foundry.veil.api.event.VeilRenderLevelStageEvent;
 import foundry.veil.platform.VeilEventPlatform;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.damagesource.DamageEffects;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageSources;
+import net.minecraft.world.damagesource.DamageTypes;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
@@ -20,7 +29,12 @@ import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.common.Tags;
+import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import org.slf4j.Logger;
 
 // The value here should match an entry in the META-INF/neoforge.mods.toml file
@@ -31,6 +45,8 @@ public class Sombra {
 
     private static final ResourceLocation COHESION_PIPELINE = id("cohesion");
     private static final ResourceLocation COHESION_SHADER = id("cohesion");
+
+    private static float power = 0;
 
     public Sombra(IEventBus modEventBus, ModContainer modContainer) {
         modEventBus.addListener(this::commonSetup);
@@ -55,10 +71,11 @@ public class Sombra {
 
             ShaderProgram shader = VeilRenderSystem.renderer().getShaderManager().getShader(COHESION_SHADER);
             if (shader != null) { // Set uniforms somehow
-                updateUniforms(shader,deltaTracker.getGameTimeDeltaPartialTick(false));
+                updateUniforms(shader, deltaTracker.getGameTimeDeltaPartialTick(false));
             }
         }));
     }
+
 
     public void updateUniforms(ShaderProgram shader, float partial) {
         ShaderUniform shaderUniform = shader.getUniform("powerUniform");
@@ -66,11 +83,12 @@ public class Sombra {
             Minecraft minecraft = Minecraft.getInstance();
             float distance = 0;
             if (minecraft.player != null) {
-                distance = (float) minecraft.player.getPosition(partial).distanceTo(new Vec3(0,56,0));
+                distance = (float) minecraft.player.getPosition(partial).distanceTo(new Vec3(0, 56, 0));
             }
-            shaderUniform.setFloat((float) Math.clamp(10f-distance,0,10));
+            shaderUniform.setFloat(power);
         }
     }
+
 
     private void commonSetup(final FMLCommonSetupEvent event) {
     }
@@ -88,7 +106,74 @@ public class Sombra {
         }
     }
 
+    @EventBusSubscriber(modid = MODID)
+    public static class ModEvents {
+        @SubscribeEvent
+        public static void tickLevel(LevelTickEvent.Pre event) {
+            if (event.getLevel().isClientSide) {
+                Minecraft minecraft = Minecraft.getInstance();
+                if (minecraft.player != null) {
+                    float target = minecraft.player.isHolding(Items.ECHO_SHARD) ? 1 : 0;
+
+                    power += target - power / 16f;
+                }
+            } else if (event.getLevel() instanceof ServerLevel level) {
+                for (Player player : level.players()) {
+                }
+            }
+        }
+
+        @SubscribeEvent
+        public static void playerAttack(AttackEntityEvent event) {
+            if (!(event.getTarget() instanceof Player player && Utils.isInvisible(player))) {
+                incohesiveInteraction(event.getEntity());
+            }
+        }
+
+        @SubscribeEvent
+        public static void playerInteract(PlayerInteractEvent.EntityInteract event) {
+            if (!(event.getTarget() instanceof Player player && Utils.isInvisible(player))) {
+                incohesiveInteraction(event.getEntity());
+            }
+        }
+
+        @SubscribeEvent
+        public static void playerInteract(PlayerInteractEvent.RightClickItem event) {
+            incohesiveInteraction(event.getEntity());
+        }
+
+        @SubscribeEvent
+        public static void playerInteract(PlayerInteractEvent.EntityInteractSpecific event) {
+            if (!(event.getTarget() instanceof Player player && Utils.isInvisible(player))) {
+                incohesiveInteraction(event.getEntity());
+            }
+        }
+
+        @SubscribeEvent
+        public static void playerInteract(PlayerInteractEvent.RightClickBlock event) {
+            incohesiveInteraction(event.getEntity());
+        }
+
+        @SubscribeEvent
+        public static void playerInteract(BlockEvent.BreakEvent event) {
+            incohesiveInteraction(event.getPlayer());
+        }
+
+        @SubscribeEvent
+        public static void playerInteract(BlockEvent.EntityPlaceEvent event) {
+            if (event.getEntity() instanceof Player player) {
+                incohesiveInteraction(player);
+            }
+        }
+
+        public static void incohesiveInteraction(Player player) {
+            if (Utils.isInvisible(player)) {
+                player.hurt(player.damageSources().magic(), 1);
+            }
+        }
+    }
+
     public static ResourceLocation id(String path) {
-        return ResourceLocation.fromNamespaceAndPath(MODID,path);
+        return ResourceLocation.fromNamespaceAndPath(MODID, path);
     }
 }

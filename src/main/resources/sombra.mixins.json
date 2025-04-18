@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_8",
   "refmap": "somber.refmap.json",
   "mixins": [
+    "EntityMixin"
   ],
   "client": [
   ],
