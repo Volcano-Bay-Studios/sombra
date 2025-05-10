@@ -16,18 +16,20 @@ float noise(float value) {
     return mix(value1, value2, seed-value);
 }
 
+float sampleDepth(vec2 coord) {
+    return distance(vec3(0, 0, 0), screenToLocalSpace(texCoord, texture(DiffuseDepthSampler, vec2(texCoord.x, 0)).r).rgb)/100;
+}
+
 void main() {
     vec4 source = texture(DiffuseSampler0, texCoord);
     vec4 white = vec4((source.r+source.g+source.b)/3);
-    float depth = distance(vec3(0, 0, 0), screenToLocalSpace(texCoord, texture(DiffuseDepthSampler, vec2(texCoord.x, 0)).r).rgb)/20;
+    float depth = sampleDepth(vec2(texCoord.x,0));
     float sumDepth = 0;
-    float average = depth;
     float resolution = 100;
     for (int i = 0; i < resolution; i++) {
         float step = i/resolution;
-        float sampledDepth = distance(vec3(0, 0, 0), screenToLocalSpace(texCoord, texture(DiffuseDepthSampler, vec2(texCoord.x, step)).r).rgb)/1000;
+        float sampledDepth = sampleDepth(vec2(texCoord.x, step))/10;
         sumDepth = sumDepth + sampledDepth;
-        average = average + sampledDepth /2;
     }
     sumDepth = sumDepth/resolution;
     float outputDepth = (1+-sumDepth)-(1+-texCoord.y);

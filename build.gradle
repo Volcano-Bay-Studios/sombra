@@ -105,7 +105,7 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 
 dependencies {
-    jarJar(implementation("foundry.veil:veil-neoforge-${project.minecraft_version}:${project.veil_version}") {
+    (implementation("foundry.veil:veil-neoforge-${project.minecraft_version}:${project.veil_version}") {
         exclude group: "maven.modrinth"
     })
 }
